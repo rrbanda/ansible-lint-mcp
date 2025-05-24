@@ -1,0 +1,5 @@
+- name: Ensure localhost is reachable
+  hosts: localhost
+  tasks:
+    - name: Ping localhost
+      ping:
