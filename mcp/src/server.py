@@ -22,8 +22,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.sse import SseServerTransport
 
 # ─────────────── Config & Globals ───────────────
-ANSIBLE_LINT_API = "http://localhost:8080"
-SUPPORTED_PROFILES = ["basic", "production", "safe", "test", "minimal"]
+ANSIBLE_LINT_API = "http://localhost:8080/v1"
+SUPPORTED_PROFILES = ["basic", "production", "safety", "test", "minimal"]
 MAX_CONCURRENT_REQUESTS = 10
 REQUEST_TIMEOUT = 60.0
 MAX_PLAYBOOK_SIZE = 1024 * 1024  # 1MB limit
