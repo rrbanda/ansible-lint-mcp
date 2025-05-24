@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""
-Ansible Lint Service
---------------------
-
-A production-ready microservice that lints uploaded Ansible playbooks
-using ansible-lint, with:
-
-• Config via Pydantic BaseSettings  
-• Non-blocking subprocess calls  
-• File-size and type validation  
-• Literal path parameters for profiles  
-• Structured JSON logging with per-request correlation IDs  
-• Prometheus metrics (requests, latencies, timeouts, errors)  
-• CORS locked to trusted origins  
-• OpenAPI docs (tags, summaries, response models)  
-• Liveness (/v1/health) and readiness (/v1/ready) checks  
-"""
-
 import os
 import subprocess
 import tempfile
@@ -27,48 +9,36 @@ import contextvars
 from uuid import uuid4
 from typing import List, Literal
 
-from fastapi import (
-    FastAPI, HTTPException, UploadFile, File,
-    status, Request, Response
-)
+from fastapi import FastAPI, HTTPException, UploadFile, File, status, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
-# Pydantic v2: BaseSettings lives in pydantic-settings package
-try:
-    from pydantic import BaseSettings
-except ImportError:
-    from pydantic_settings import BaseSettings
-
 from pydantic import BaseModel
+from pydantic_settings import BaseSettings
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
-from prometheus_client import (
-    Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-)
 
 # ------------------------------------------------------------------------------
-# Configuration
+# Globals
+SHOW_PROFILE_SUPPORTED = False
+
 # ------------------------------------------------------------------------------
+# Settings
 class Settings(BaseSettings):
     ansible_lint_cmd: str = "ansible-lint"
     lint_timeout_seconds: int = 60
-    max_upload_size_bytes: int = 5 * 1024 * 1024   # 5 MB
-    allowed_origins: List[str] = ["https://your-frontend.example.com"]
+    max_upload_size_bytes: int = 5 * 1024 * 1024
+    allowed_origins: List[str] = ["*"]
     log_level: str = "INFO"
 
     class Config:
         env_file = ".env"
-        env_file_encoding = "utf-8"
 
 settings = Settings()
-
 SUPPORTED_PROFILES = ["basic", "production", "safety", "test", "minimal"]
 
 # ------------------------------------------------------------------------------
-# Logging + Correlation ID
-# ------------------------------------------------------------------------------
+# Logging Setup
 REQUEST_ID_CTX = contextvars.ContextVar("request_id", default="-")
 
 class RequestIdFilter(logging.Filter):
@@ -78,55 +48,27 @@ class RequestIdFilter(logging.Filter):
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
-    format='{"timestamp":"%(asctime)s",'
-           '"level":"%(levelname)s",'
-           '"logger":"%(name)s",'
-           '"request_id":"%(request_id)s",'
-           '"message":"%(message)s"}'
+    format='{"timestamp":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","request_id":"%(request_id)s","message":"%(message)s"}'
 )
 logger = logging.getLogger("ansible-lint-service")
 logger.addFilter(RequestIdFilter())
 
 # ------------------------------------------------------------------------------
-# Metrics
-# ------------------------------------------------------------------------------
-REQUEST_COUNT = Counter(
-    "ansible_lint_requests_total",
-    "Total ansible-lint requests",
-    ["profile", "exit_code"]
-)
-REQUEST_LATENCY = Histogram(
-    "ansible_lint_request_latency_seconds",
-    "Latency of ansible-lint requests",
-    ["profile"]
-)
-TIMEOUT_COUNT = Counter(
-    "ansible_lint_timeouts_total",
-    "Number of ansible-lint timeouts"
-)
-ERROR_COUNT = Counter(
-    "ansible_lint_errors_total",
-    "Number of internal errors in lint runner"
-)
+# Prometheus Metrics
+REQUEST_COUNT = Counter("ansible_lint_requests_total", "Total ansible-lint requests", ["profile", "exit_code"])
+REQUEST_LATENCY = Histogram("ansible_lint_request_latency_seconds", "Latency of ansible-lint requests", ["profile"])
+TIMEOUT_COUNT = Counter("ansible_lint_timeouts_total", "Number of ansible-lint timeouts")
+ERROR_COUNT = Counter("ansible_lint_errors_total", "Number of internal errors in lint runner")
 
 # ------------------------------------------------------------------------------
-# FastAPI setup
-# ------------------------------------------------------------------------------
-app = FastAPI(
-    title="Ansible Lint Service",
-    version="1.0.0",
-    openapi_tags=[
-        {"name": "lint", "description": "Run ansible-lint on uploaded playbooks"},
-        {"name": "meta", "description": "Health & metadata endpoints"},
-    ],
-)
+# FastAPI Setup
+app = FastAPI(title="Ansible Lint API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=False,
 )
 
 @app.middleware("http")
@@ -138,8 +80,22 @@ async def add_request_id(request: Request, call_next):
     return response
 
 # ------------------------------------------------------------------------------
-# Schemas
+# Feature Detection
+def detect_ansible_lint_features():
+    global SHOW_PROFILE_SUPPORTED
+    try:
+        output = subprocess.check_output([settings.ansible_lint_cmd, "--help"], text=True)
+        SHOW_PROFILE_SUPPORTED = "--show-profile" in output
+        logger.info(f"SHOW_PROFILE_SUPPORTED = {SHOW_PROFILE_SUPPORTED}")
+    except Exception as e:
+        logger.warning(f"ansible-lint --help failed: {e}")
+
+@app.on_event("startup")
+def on_startup():
+    detect_ansible_lint_features()
+
 # ------------------------------------------------------------------------------
+# Models
 class LintResult(BaseModel):
     exit_code: int
     stdout: str
@@ -149,53 +105,10 @@ class ProfilesResponse(BaseModel):
     profiles: List[str]
 
 class HealthResponse(BaseModel):
-    status: str = "ok"
+    status: str
 
 # ------------------------------------------------------------------------------
-# Exception handlers
-# ------------------------------------------------------------------------------
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    logger.warning(f"HTTP {exc.status_code}: {exc.detail}")
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-
-@app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled exception")
-    return JSONResponse(
-        {"detail": "Internal Server Error"},
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    )
-
-# ------------------------------------------------------------------------------
-# Readiness & Health
-# ------------------------------------------------------------------------------
-@app.get("/v1/ready", summary="Readiness probe", tags=["meta"])
-def readiness():
-    """Ensure ansible-lint binary is present."""
-    if shutil.which(settings.ansible_lint_cmd) is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"'{settings.ansible_lint_cmd}' not found"
-        )
-    return {"status": "ready"}
-
-@app.get("/v1/health", response_model=HealthResponse,
-         summary="Liveness probe", tags=["meta"])
-def health():
-    return HealthResponse()
-
-# ------------------------------------------------------------------------------
-# Metrics endpoint
-# ------------------------------------------------------------------------------
-@app.get("/metrics", include_in_schema=False)
-def metrics():
-    data = generate_latest()
-    return Response(data, media_type=CONTENT_TYPE_LATEST)
-
-# ------------------------------------------------------------------------------
-# Core lint runner
-# ------------------------------------------------------------------------------
+# Core Lint Logic
 async def run_ansible_lint(playbook: str, profile: str) -> LintResult:
     def _invoke() -> LintResult:
         tmpdir = tempfile.mkdtemp()
@@ -203,117 +116,82 @@ async def run_ansible_lint(playbook: str, profile: str) -> LintResult:
         with open(path, "w", encoding="utf-8") as f:
             f.write(playbook)
 
-        cmd = [
-            settings.ansible_lint_cmd,
-            "--nocolor",
-            "--profile", profile,
-            path
-        ]
-        logger.info("Running subprocess", extra={"cmd": cmd})
+        cmd = [settings.ansible_lint_cmd, f"--profile={profile}", "--nocolor"]
+        if SHOW_PROFILE_SUPPORTED:
+            cmd.append("--show-profile")
+        cmd.append(path)
 
-        exit_code = 1
-        stdout = ""
-        stderr = ""
+        logger.info(f"Running command: {' '.join(cmd)}")
         start = time.time()
+        exit_code, stdout, stderr = 1, "", ""
 
         try:
-            proc = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=settings.lint_timeout_seconds
-            )
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=settings.lint_timeout_seconds)
             exit_code = proc.returncode
             stdout = proc.stdout
             stderr = proc.stderr
         except subprocess.TimeoutExpired:
             TIMEOUT_COUNT.inc()
-            stderr = (f"ansible-lint timed out "
-                      f"after {settings.lint_timeout_seconds}s")
-            logger.error("ansible-lint timeout", extra={"cmd": cmd})
+            stderr = f"ansible-lint timed out after {settings.lint_timeout_seconds}s"
         except Exception as e:
             ERROR_COUNT.inc()
             stderr = f"ansible-lint failed: {e}"
-            logger.exception("ansible-lint error", extra={"cmd": cmd})
         finally:
-            duration = time.time() - start
-            REQUEST_LATENCY.labels(profile=profile).observe(duration)
-            REQUEST_COUNT.labels(
-                profile=profile,
-                exit_code=str(exit_code),
-            ).inc()
+            REQUEST_LATENCY.labels(profile=profile).observe(time.time() - start)
+            REQUEST_COUNT.labels(profile=profile, exit_code=str(exit_code)).inc()
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-        return LintResult(
-            exit_code=exit_code,
-            stdout=stdout,
-            stderr=stderr,
-        )
+        return LintResult(exit_code=exit_code, stdout=stdout, stderr=stderr)
 
     return await run_in_threadpool(_invoke)
 
 # ------------------------------------------------------------------------------
 # Endpoints
-# ------------------------------------------------------------------------------
-@app.post(
-    "/v1/lint/{profile}",
-    response_model=LintResult,
-    summary="Lint a playbook",
-    tags=["lint"],
-    status_code=status.HTTP_200_OK,
-)
-async def lint_playbook(
-    profile: Literal["basic", "production", "safety", "test", "minimal"],
-    file: UploadFile = File(...),
-):
-    """
-    Upload a .yml/.yaml playbook and lint it under the given profile.
-    • exit_code=0 → no violations  
-    • exit_code=2 → violations found  
-    • exit_code=1 → internal error or timeout  
-    """
-    # Filename/type check
+@app.post("/v1/lint/{profile}", response_model=LintResult)
+async def lint_playbook(profile: Literal["basic", "production", "safety", "test", "minimal"], file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".yml", ".yaml")):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only .yml/.yaml files are accepted."
-        )
+        raise HTTPException(status_code=400, detail="Only .yml/.yaml files are accepted")
+    content = await file.read()
+    if len(content) > settings.max_upload_size_bytes:
+        raise HTTPException(status_code=413, detail="File too large")
+    return await run_ansible_lint(content.decode("utf-8"), profile)
 
-    body = await file.read()
-    if len(body) > settings.max_upload_size_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=(f"File exceeds "
-                    f"{settings.max_upload_size_bytes} bytes")
-        )
-
+@app.get("/v1/lint/test", response_model=LintResult)
+async def test_lint_playbook(profile: Literal["basic", "production", "safety", "test", "minimal"] = "basic"):
+    path = os.getenv("CI_TEST_PLAYBOOK_PATH", "tests/hello.yml")
+    
+    # Check if the test playbook file exists
+    if not os.path.exists(path):
+        logger.error(f"Test playbook not found at path: {path}")
+        raise HTTPException(status_code=404, detail=f"Test playbook not found at {path}")
+    
+    # Validate profile parameter
+    if profile not in SUPPORTED_PROFILES:
+        raise HTTPException(status_code=400, detail=f"Invalid profile '{profile}'. Supported profiles: {SUPPORTED_PROFILES}")
+    
     try:
-        text = body.decode("utf-8")
-    except UnicodeDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File is not valid UTF-8 text."
-        )
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        logger.info(f"Running test lint with profile: {profile}")
+        return await run_ansible_lint(content, profile)
+    except Exception as e:
+        logger.error(f"Error reading test playbook: {e}")
+        raise HTTPException(status_code=500, detail=f"Error reading test playbook: {str(e)}")
 
-    return await run_ansible_lint(text, profile)
-
-@app.get(
-    "/v1/profiles",
-    response_model=ProfilesResponse,
-    summary="List supported profiles",
-    tags=["meta"],
-)
+@app.get("/v1/profiles", response_model=ProfilesResponse)
 def list_profiles():
     return ProfilesResponse(profiles=SUPPORTED_PROFILES)
 
+@app.get("/v1/health", response_model=HealthResponse)
+def health():
+    return HealthResponse(status="ok")
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 # ------------------------------------------------------------------------------
-# Uvicorn entrypoint
-# ------------------------------------------------------------------------------
+# Entrypoint
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
-        log_level=settings.log_level.lower(),
-    )
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
