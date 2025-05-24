@@ -64,7 +64,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-SUPPORTED_PROFILES = ["basic", "production", "safe", "test", "minimal"]
+SUPPORTED_PROFILES = ["basic", "production", "safety", "test", "minimal"]
 
 # ------------------------------------------------------------------------------
 # Logging + Correlation ID
@@ -263,7 +263,7 @@ async def run_ansible_lint(playbook: str, profile: str) -> LintResult:
     status_code=status.HTTP_200_OK,
 )
 async def lint_playbook(
-    profile: Literal["basic", "production", "safe", "test", "minimal"],
+    profile: Literal["basic", "production", "safety", "test", "minimal"],
     file: UploadFile = File(...),
 ):
     """
