@@ -1,5 +1,12 @@
 # Ansible-Lint Microservices
 
+## Fast API
+<img width="1509" alt="Screenshot 2025-05-23 at 10 32 39 PM" src="https://github.com/user-attachments/assets/385ca219-4e0a-48f9-9723-889e2331263e" />
+
+## MCP Inspector UI 
+<img width="1509" alt="Screenshot 2025-05-23 at 10 31 44 PM" src="https://github.com/user-attachments/assets/1fa14504-3329-48d9-9c7e-78f3e56cc359" />
+
+
 This repository contains two complementary services for running **Ansible Lint** at scale:
 
 1. **ansible-lint-api**
