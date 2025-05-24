@@ -1,0 +1,27 @@
+# ── Base ─────────────────────────────────────────────────────────────────────
+FROM registry.access.redhat.com/ubi8/python-39
+
+LABEL maintainer="you@example.com"
+ENV PYTHONUNBUFFERED=1 \
+    PORT=8090
+
+# ── Application setup ───────────────────────────────────────────────────────
+WORKDIR /app
+
+# 1) Install Python deps
+COPY mcp-requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r mcp-requirements.txt
+
+# 2) Copy your MCP server code
+COPY server.py .
+
+# ── OpenShift permissions ───────────────────────────────────────────────────
+# Make /app owned by root:root and group-writable so any UID/GID 0 can write
+RUN chown -R 0:0 /app \
+    && chmod -R g+rwX /app
+
+# ── Runtime ─────────────────────────────────────────────────────────────────
+EXPOSE 8090
+
+CMD ["python", "server.py"]

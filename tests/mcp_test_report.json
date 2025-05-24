@@ -1,0 +1,177 @@
+{
+  "timestamp": "2025-05-23 22:13:05",
+  "total_tests": 11,
+  "passed": 11,
+  "failed": 0,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "name": "Health Check",
+      "passed": true,
+      "duration": 0.00852513313293457,
+      "error": "",
+      "response": {
+        "status": "degraded",
+        "ansible_lint_api": false,
+        "timestamp": "2025-05-24 02:13:04"
+      }
+    },
+    {
+      "name": "API Root",
+      "passed": true,
+      "duration": 0.001378774642944336,
+      "error": "",
+      "response": {
+        "status": "ok",
+        "service": "Ansible Lint MCP Server",
+        "available_tools": [
+          "lint_ansible_playbook",
+          "get_lint_profiles",
+          "validate_playbook_syntax",
+          "lint_playbook_stream"
+        ],
+        "max_concurrent_requests": 10,
+        "request_timeout": 60.0
+      }
+    },
+    {
+      "name": "Get Lint Profiles",
+      "passed": true,
+      "duration": 0.010236024856567383,
+      "error": "",
+      "response": {
+        "tool": "get_lint_profiles",
+        "success": true,
+        "output": {
+          "profiles": [
+            "basic",
+            "production",
+            "safe",
+            "test",
+            "minimal"
+          ],
+          "profile_descriptions": {
+            "basic": "Basic rule set for general use",
+            "production": "Strict rules for production environments",
+            "safe": "Conservative rules that avoid false positives",
+            "test": "Rules optimized for test playbooks",
+            "minimal": "Minimal rule set for quick checks"
+          },
+          "default_profile": "basic"
+        },
+        "timestamp": "2025-05-24 02:13:04"
+      }
+    },
+    {
+      "name": "Validate Valid Playbook",
+      "passed": true,
+      "duration": 0.0022101402282714844,
+      "error": "",
+      "response": {
+        "tool": "validate_playbook_syntax",
+        "success": true,
+        "output": {
+          "valid": true,
+          "error": null,
+          "size_bytes": 94,
+          "max_size_bytes": 1048576
+        },
+        "timestamp": "2025-05-24 02:13:04"
+      }
+    },
+    {
+      "name": "Validate Invalid Playbook",
+      "passed": true,
+      "duration": 0.001968860626220703,
+      "error": "",
+      "response": {
+        "tool": "validate_playbook_syntax",
+        "success": false,
+        "output": {
+          "valid": false,
+          "error": "Invalid YAML format: while scanning a quoted scalar\n  in \"<unicode string>\", line 6, column 14:\n            msg: \"Hello World\n                 ^\nfound unexpected end of stream\n  in \"<unicode string>\", line 8, column 1:\n    \n    ^",
+          "size_bytes": 125,
+          "max_size_bytes": 1048576
+        },
+        "timestamp": "2025-05-24 02:13:04"
+      }
+    },
+    {
+      "name": "Oversized Playbook Rejection",
+      "passed": true,
+      "duration": 0.010970830917358398,
+      "error": "",
+      "response": {
+        "tool": "validate_playbook_syntax",
+        "success": false,
+        "output": {
+          "valid": false,
+          "error": "Playbook exceeds maximum size of 1048576 bytes",
+          "size_bytes": 1048682,
+          "max_size_bytes": 1048576
+        },
+        "timestamp": "2025-05-24 02:13:04"
+      }
+    },
+    {
+      "name": "Invalid Tool Name",
+      "passed": true,
+      "duration": 0.002863168716430664,
+      "error": "",
+      "response": {
+        "error": "Tool 'nonexistent_tool' not found",
+        "available_tools": [
+          "lint_ansible_playbook",
+          "get_lint_profiles",
+          "validate_playbook_syntax",
+          "lint_playbook_stream"
+        ]
+      }
+    },
+    {
+      "name": "Invalid JSON",
+      "passed": true,
+      "duration": 0.0014619827270507812,
+      "error": "",
+      "response": null
+    },
+    {
+      "name": "Concurrent Requests",
+      "passed": true,
+      "duration": 0.009812355041503906,
+      "error": "",
+      "response": {
+        "successful": 5,
+        "total": 5
+      }
+    },
+    {
+      "name": "Profile Validation",
+      "passed": true,
+      "duration": 0.006248950958251953,
+      "error": "",
+      "response": {
+        "tool": "lint_ansible_playbook",
+        "success": false,
+        "output": {
+          "error": "Lint API returned 404: {\"detail\":\"Not Found\"}"
+        },
+        "timestamp": "2025-05-24 02:13:05"
+      }
+    },
+    {
+      "name": "Lint Ansible Playbook",
+      "passed": true,
+      "duration": 0.004081010818481445,
+      "error": "",
+      "response": {
+        "tool": "lint_ansible_playbook",
+        "success": false,
+        "output": {
+          "error": "Lint API returned 404: {\"detail\":\"Not Found\"}"
+        },
+        "timestamp": "2025-05-24 02:13:05"
+      }
+    }
+  ]
+}
