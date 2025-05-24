@@ -1,0 +1,201 @@
+{
+  "timestamp": "2025-05-23 21:41:39",
+  "total_tests": 11,
+  "passed": 11,
+  "failed": 0,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "name": "Health Check",
+      "passed": true,
+      "duration": 0.011480093002319336,
+      "error": "",
+      "response": {
+        "status": "healthy",
+        "ansible_lint_api": true,
+        "timestamp": "2025-05-24 01:41:34"
+      }
+    },
+    {
+      "name": "API Root",
+      "passed": true,
+      "duration": 0.0014803409576416016,
+      "error": "",
+      "response": {
+        "status": "ok",
+        "service": "Ansible Lint MCP Server",
+        "available_tools": [
+          "lint_ansible_playbook",
+          "get_lint_profiles",
+          "validate_playbook_syntax",
+          "lint_playbook_stream"
+        ],
+        "max_concurrent_requests": 10,
+        "request_timeout": 60.0
+      }
+    },
+    {
+      "name": "Get Lint Profiles",
+      "passed": true,
+      "duration": 0.007700920104980469,
+      "error": "",
+      "response": {
+        "tool": "get_lint_profiles",
+        "success": true,
+        "output": {
+          "profiles": [
+            "basic",
+            "production",
+            "safe",
+            "test",
+            "minimal"
+          ],
+          "profile_descriptions": {
+            "basic": "Basic rule set for general use",
+            "production": "Strict rules for production environments",
+            "safe": "Conservative rules that avoid false positives",
+            "test": "Rules optimized for test playbooks",
+            "minimal": "Minimal rule set for quick checks"
+          },
+          "default_profile": "basic"
+        },
+        "timestamp": "2025-05-24 01:41:34"
+      }
+    },
+    {
+      "name": "Validate Valid Playbook",
+      "passed": true,
+      "duration": 0.0018308162689208984,
+      "error": "",
+      "response": {
+        "tool": "validate_playbook_syntax",
+        "success": true,
+        "output": {
+          "valid": true,
+          "error": null,
+          "size_bytes": 94,
+          "max_size_bytes": 1048576
+        },
+        "timestamp": "2025-05-24 01:41:34"
+      }
+    },
+    {
+      "name": "Validate Invalid Playbook",
+      "passed": true,
+      "duration": 0.0019528865814208984,
+      "error": "",
+      "response": {
+        "tool": "validate_playbook_syntax",
+        "success": false,
+        "output": {
+          "valid": false,
+          "error": "Invalid YAML format: while scanning a quoted scalar\n  in \"<unicode string>\", line 6, column 14:\n            msg: \"Hello World\n                 ^\nfound unexpected end of stream\n  in \"<unicode string>\", line 8, column 1:\n    \n    ^",
+          "size_bytes": 125,
+          "max_size_bytes": 1048576
+        },
+        "timestamp": "2025-05-24 01:41:34"
+      }
+    },
+    {
+      "name": "Oversized Playbook Rejection",
+      "passed": true,
+      "duration": 0.007874011993408203,
+      "error": "",
+      "response": {
+        "tool": "validate_playbook_syntax",
+        "success": false,
+        "output": {
+          "valid": false,
+          "error": "Playbook exceeds maximum size of 1048576 bytes",
+          "size_bytes": 1048682,
+          "max_size_bytes": 1048576
+        },
+        "timestamp": "2025-05-24 01:41:34"
+      }
+    },
+    {
+      "name": "Invalid Tool Name",
+      "passed": true,
+      "duration": 0.0013947486877441406,
+      "error": "",
+      "response": {
+        "error": "Tool 'nonexistent_tool' not found",
+        "available_tools": [
+          "lint_ansible_playbook",
+          "get_lint_profiles",
+          "validate_playbook_syntax",
+          "lint_playbook_stream"
+        ]
+      }
+    },
+    {
+      "name": "Invalid JSON",
+      "passed": true,
+      "duration": 0.0014369487762451172,
+      "error": "",
+      "response": null
+    },
+    {
+      "name": "Concurrent Requests",
+      "passed": true,
+      "duration": 0.007398128509521484,
+      "error": "",
+      "response": {
+        "successful": 5,
+        "total": 5
+      }
+    },
+    {
+      "name": "Profile Validation",
+      "passed": true,
+      "duration": 1.962367296218872,
+      "error": "",
+      "response": {
+        "tool": "lint_ansible_playbook",
+        "success": true,
+        "output": {
+          "summary": {
+            "exit_code": 2,
+            "passed": false,
+            "profile_used": "basic",
+            "issue_count": 0,
+            "error_count": 0,
+            "warning_count": 0
+          },
+          "issues": [],
+          "raw_output": {
+            "stdout": "name[play]: All plays should be named.\n/private/var/folders/c0/vb26dbv97cscr52vxs6m6_9c0000gn/T/tmph5gs0jx3/playbook.yml:2\n\nyaml[new-line-at-end-of-file]: No new line character at the end of file\n/private/var/folders/c0/vb26dbv97cscr52vxs6m6_9c0000gn/T/tmph5gs0jx3/playbook.yml:3\n\n",
+            "stderr": "WARNING  Project directory /.ansible cannot be used for caching as it is not writable.\nWARNING  Listing 2 violation(s) that are fatal\nRead documentation for instructions on how to ignore specific rule violations.\n\n# Rule Violation Summary\n\n  1 name profile:basic tags:idiom\n  1 yaml profile:basic tags:formatting,yaml\n\nFailed: 2 failure(s), 0 warning(s) on 1 files. Profile 'basic' was required, but 'min' profile passed.\n"
+          }
+        },
+        "timestamp": "2025-05-24 01:41:36"
+      }
+    },
+    {
+      "name": "Lint Ansible Playbook",
+      "passed": true,
+      "duration": 1.806288242340088,
+      "error": "",
+      "response": {
+        "tool": "lint_ansible_playbook",
+        "success": true,
+        "output": {
+          "summary": {
+            "exit_code": 2,
+            "passed": false,
+            "profile_used": "basic",
+            "issue_count": 0,
+            "error_count": 0,
+            "warning_count": 0
+          },
+          "issues": [],
+          "raw_output": {
+            "stdout": "name[play]: All plays should be named.\n/private/var/folders/c0/vb26dbv97cscr52vxs6m6_9c0000gn/T/tmp0bizaljl/playbook.yml:2\n\nyaml[truthy]: Truthy value should be one of [false, true]\n/private/var/folders/c0/vb26dbv97cscr52vxs6m6_9c0000gn/T/tmp0bizaljl/playbook.yml:3\n\nyaml[trailing-spaces]: Trailing spaces\n/private/var/folders/c0/vb26dbv97cscr52vxs6m6_9c0000gn/T/tmp0bizaljl/playbook.yml:8\n\ncommand-instead-of-shell: Use shell only when shell functionality is required.\n/private/var/folders/c0/vb26dbv97cscr52vxs6m6_9c0000gn/T/tmp0bizaljl/playbook.yml:9 Task/Handler: Another task\n\n",
+            "stderr": "WARNING  Project directory /.ansible cannot be used for caching as it is not writable.\nWARNING  Listing 4 violation(s) that are fatal\nRead documentation for instructions on how to ignore specific rule violations.\n\n# Rule Violation Summary\n\n  1 command-instead-of-shell profile:basic tags:command-shell,idiom\n  1 name profile:basic tags:idiom\n  1 yaml profile:basic tags:formatting,yaml\n  1 yaml profile:basic tags:formatting,yaml\n\nFailed: 4 failure(s), 0 warning(s) on 1 files. Profile 'basic' was required, but 'min' profile passed.\n"
+          }
+        },
+        "timestamp": "2025-05-24 01:41:38"
+      }
+    }
+  ]
+}
