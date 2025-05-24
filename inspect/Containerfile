@@ -1,0 +1,15 @@
+FROM registry.access.redhat.com/ubi9/nodejs-18
+
+# Set up custom writable npm locations
+ENV NPM_CONFIG_PREFIX=/opt/app-root/npm-global
+ENV NPM_CONFIG_CACHE=/opt/app-root/npm-cache
+ENV PATH=$NPM_CONFIG_PREFIX/bin:$PATH
+
+# Create needed directories with correct permissions
+RUN mkdir -p $NPM_CONFIG_PREFIX/lib $NPM_CONFIG_CACHE && \
+    chmod -R 775 /opt/app-root
+
+WORKDIR /opt/app-root/src
+
+# Run MCP Inspector via npx
+CMD ["npx", "@modelcontextprotocol/inspector", "--port", "8080"]

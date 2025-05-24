@@ -1,5 +1,5 @@
 httpx
-mcp
 pyyaml
 fastmcp
 starlette
+prometheus-client

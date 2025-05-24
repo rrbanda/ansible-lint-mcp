@@ -1,27 +1,22 @@
 # ── Base ─────────────────────────────────────────────────────────────────────
-FROM registry.access.redhat.com/ubi9/python-39
+FROM registry.access.redhat.com/ubi9/python-311
+
 
 LABEL maintainer="you@example.com"
 ENV PYTHONUNBUFFERED=1 \
     PORT=8090
 
-# ── Application setup ───────────────────────────────────────────────────────
-WORKDIR /app
+# ── Use OpenShift-safe working directory ─────────────────────────────────────
+WORKDIR /opt/app-root/src
 
-# 1) Install Python deps
-COPY mcp-requirements.txt .
+# ── Install Python deps ──────────────────────────────────────────────────────
+COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r mcp-requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
-# 2) Copy your MCP server code
-COPY server.py .
+# ── Copy your MCP server code ────────────────────────────────────────────────
+COPY src/server.py .
 
-# ── OpenShift permissions ───────────────────────────────────────────────────
-# Make /app owned by root:root and group-writable so any UID/GID 0 can write
-RUN chown -R 0:0 /app \
-    && chmod -R g+rwX /app
 
-# ── Runtime ─────────────────────────────────────────────────────────────────
 EXPOSE 8090
-
 CMD ["python", "server.py"]

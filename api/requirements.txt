@@ -2,3 +2,6 @@ fastapi
 uvicorn
 pydantic
 ansible-lint
+pydantic-settings
+prometheus-client
+python-multipart

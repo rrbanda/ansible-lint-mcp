@@ -8,6 +8,8 @@ import time
 import contextvars
 from uuid import uuid4
 from typing import List, Literal
+# Disable ansible-lint cache explicitly in runtime
+os.environ["ANSIBLE_LINT_NO_CACHE"] = "1"
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, status, Request, Response
 from fastapi.responses import JSONResponse

@@ -1,27 +1,20 @@
-# ── Base ─────────────────────────────────────────────────────────────────────
 FROM registry.access.redhat.com/ubi9/python-39
 
 LABEL maintainer="you@example.com"
 ENV PYTHONUNBUFFERED=1 \
-    PORT=8080
+    PORT=8080 \
+    ANSIBLE_LINT_NO_CACHE=1
 
-# ── Application setup ───────────────────────────────────────────────────────
-WORKDIR /app
+# Use OpenShift-safe working directory
+WORKDIR /opt/app-root/src
 
-# 1) Install Python deps
+# Copy dependencies and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# 2) Copy your FastAPI app
-COPY main.py .
+# Copy source code
+COPY src/main.py .
 
-# ── OpenShift permissions ───────────────────────────────────────────────────
-# Make /app owned by root:root and group-writable so any UID/GID 0 can write
-RUN chown -R 0:0 /app \
-    && chmod -R g+rwX /app
-
-# ── Runtime ─────────────────────────────────────────────────────────────────
 EXPOSE 8080
-
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
